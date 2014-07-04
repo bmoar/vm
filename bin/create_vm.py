@@ -5,16 +5,16 @@ import sys
 import os
 
 class VirtualMachine():
-    def __init__(self, server_type="", xml_template_path="", img_src="", mnt_path="/mnt/vm"):
+    def __init__(self, host_type="", xml_template_path="", img_src="", mnt_path="/mnt/vm"):
         """
             Initialize a new VirtualMachine
 
-            server_type == webserver, ssh, etc. Will be used to create the hostname
+            host_type == webserver, ssh, etc. Will be used to create the hostname
             xml_template_path == path to the xml template of the base img used to create clone
             img_src == path to the base vm image to clone
             mnt_path == path to mount the new vm machine
         """
-        self.server_type = server_type
+        self.host_type = host_type
         self.xml_template_path = xml_template_path
         self.img_src = img_src
         self.mnt_path = mnt_path
@@ -33,6 +33,23 @@ class VirtualMachine():
 
         if not os.path.exists(new_img_path):
             sys.exit("Should have created a new image")
+
+    def __get_host_count(self, host_type=""):
+        """
+            Get the current number of VMs running that match
+            host_type string
+        """
+        hosts = 0
+        if host_type:
+            try:
+                hosts = sh.wc(sh.awk(sh.grep(sh.virsh('list', '--all'), '"%s"' % (host_type)), '{print $2}'), '-l')
+            except:
+                hosts = 0
+        else:
+            sys.exit("Can't count non-existant host_type")
+
+        return hosts
+
 
     def rm_file(self, file=""):
         """
@@ -59,14 +76,22 @@ class VirtualMachine():
         """
         pass
 
+    def start(self):
+        """
+            Create one virtual machine
+        """
+        self.hostname = self.host_type + str(self.__get_host_count(self.host_type))
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 5:
-        server_type = sys.argv[1]
+        host_type = sys.argv[1]
         xml_template_path = sys.argv[2]
         img_src = sys.argv[3]
         mnt_path = sys.argv[4]
 
-        vm = VirtualMachine(server_type, xml_template_path, img_src, mnt_path)
+        vm = VirtualMachine(host_type, xml_template_path, img_src, mnt_path)
+        vm.start()
 
     else:
-        sys.exit("Usage: %s server_type xml_template_path img_src mnt_path" % (sys.argv[0]))
+        sys.exit("Usage: %s host_type xml_template_path img_src mnt_path" % (sys.argv[0]))
