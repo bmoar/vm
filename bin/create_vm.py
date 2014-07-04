@@ -86,6 +86,43 @@ class VirtualMachine():
             mount_device=sh.head(sh.awk(sh.grep(sh.kpartx('-l', img_src), '-v', 'deleted'), '{print $1}'), '-1')
             sh.mount("/dev/mapper/%s" % (mount_device.rstrip()), mount_path)
 
+    def set_hostname(self, hostname="", mount_path=""):
+        """
+            Changes /etc/hosts and /etc/hostname
+            to match the new hostname
+        """
+
+        if not os.path.exists(mount_path):
+            sys.exit("Invalid mount_path")
+
+        if not hostname:
+            sys.exit("Can't set a NULL hostname")
+
+        with sh.sudo:
+
+            # can't os.path.join these paths, join sucks and drops the last
+            # abs path
+            hostname_path = ""
+            hosts_path = ""
+
+            if mnt_path.endswith("/"):
+                hostname_path = mnt_path + "etc/hostname"
+                hosts_path = mnt_path + "etc/hosts"
+            else:
+                hostname_path = mnt_path + "/etc/hostname"
+                hosts_path = mnt_path + "/etc/hosts"
+
+            with open(hostname_path, 'w') as f:
+                f.write(hostname)
+
+            hosts = ""
+            with open(hosts_path, 'r') as f:
+                for line in f:
+                    hosts = hosts + line.replace("base0", hostname)
+
+            with open(hosts_path, 'w') as f:
+                f.write(hosts)
+
     def create(self):
         """
             Create one virtual machine
@@ -95,6 +132,7 @@ class VirtualMachine():
         new_img = os.path.join(self.storage_path, self.hostname + ".img")
         self.copy_vm_disk(self.img_src, new_img)
         self.mount_vm(new_img, self.mnt_path)
+        self.set_hostname(self.hostname, self.mnt_path)
 
 
 if __name__ == "__main__":
