@@ -75,9 +75,18 @@ class VirtualMachine():
         """
             Mount img_src at mount_path with kpartx
         """
-        pass
+        if not os.path.exists(img_src):
+            sys.exit("Invalid image to mount: %s" % (img_src))
 
-    def start(self):
+        if not os.path.exists(mount_path):
+            sys.exit("Invalid mount path: %s" % (mount_path))
+
+        with sh.sudo:
+            sh.kpartx('-a', img_src)
+            mount_device=sh.head(sh.awk(sh.grep(sh.kpartx('-l', img_src), '-v', 'deleted'), '{print $1}'), '-1')
+            sh.mount("/dev/mapper/%s" % (mount_device.rstrip()), mount_path)
+
+    def create(self):
         """
             Create one virtual machine
         """
@@ -85,6 +94,7 @@ class VirtualMachine():
 
         new_img = os.path.join(self.storage_path, self.hostname + ".img")
         self.copy_vm_disk(self.img_src, new_img)
+        self.mount_vm(new_img, self.mnt_path)
 
 
 if __name__ == "__main__":
@@ -95,7 +105,7 @@ if __name__ == "__main__":
         mnt_path = sys.argv[4]
 
         vm = VirtualMachine(host_type, xml_template_path, img_src, mnt_path)
-        vm.start()
+        vm.create()
 
     else:
         sys.exit("Usage: %s host_type xml_template_path img_src mnt_path" % (sys.argv[0]))
