@@ -5,7 +5,7 @@ import sys
 import os
 
 class VirtualMachine():
-    def __init__(self, host_type="", xml_template_path="", img_src="", mnt_path="/mnt/vm"):
+    def __init__(self, host_type="", xml_template_path="", img_src="", mnt_path="/mnt/vm", storage_path="/mnt/virt/nix/"):
         """
             Initialize a new VirtualMachine
 
@@ -18,6 +18,7 @@ class VirtualMachine():
         self.xml_template_path = xml_template_path
         self.img_src = img_src
         self.mnt_path = mnt_path
+        self.storage_path = storage_path
 
         self.hostname = ""
         self.domain = ""
@@ -29,7 +30,8 @@ class VirtualMachine():
         if not os.path.exists(img_path):
             sys.exit("Path to base image does not exist")
 
-        sh.cp('--reflink=auto', "%s" % (img_path), "%s" % (new_img_path))
+        with sh.sudo:
+            sh.cp('--reflink=auto', "%s" % (img_path), "%s" % (new_img_path))
 
         if not os.path.exists(new_img_path):
             sys.exit("Should have created a new image")
@@ -49,7 +51,6 @@ class VirtualMachine():
             sys.exit("Can't count non-existant host_type")
 
         return hosts
-
 
     def rm_file(self, file=""):
         """
@@ -81,6 +82,9 @@ class VirtualMachine():
             Create one virtual machine
         """
         self.hostname = self.host_type + str(self.__get_host_count(self.host_type))
+
+        new_img = os.path.join(self.storage_path, self.hostname + ".img")
+        self.copy_vm_disk(self.img_src, new_img)
 
 
 if __name__ == "__main__":
