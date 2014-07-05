@@ -162,6 +162,17 @@ class VirtualMachine():
         with sh.sudo:
             sh.virsh("create", xml_config_path)
 
+    def umount_vm(self, mount_path=""):
+        """
+            Umount the image at mount_path
+        """
+
+        if not os.path.exists(mount_path):
+            sys.exit("Error unmounting %s" % (mount_path))
+
+        with sh.sudo:
+            sh.umount(mount_path)
+
     def create(self):
         """
             Create one virtual machine
@@ -177,6 +188,7 @@ class VirtualMachine():
         self.copy_file(self.xml_template_path, new_xml)
         self.set_vm_config(self.hostname, new_img, new_xml)
         self.create_vm(new_xml)
+        self.umount_vm(self.mnt_path)
 
 
 if __name__ == "__main__":
