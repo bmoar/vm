@@ -3,6 +3,8 @@
 import sh
 import sys
 import os
+import xml.etree.ElementTree as ET
+import uuid
 
 class VirtualMachine():
     def __init__(self, host_type="", xml_template_path="", img_src="", mnt_path="/mnt/vm", storage_path="/mnt/virt/nix/"):
@@ -23,17 +25,17 @@ class VirtualMachine():
         self.hostname = ""
         self.domain = ""
 
-    def copy_vm_disk(self, img_path="", new_img_path=""):
+    def copy_file(self, src="", dest=""):
         """
-            Creates a COW copy of img_path in new_img_path
+            Creates a COW copy of src in dest
         """
-        if not os.path.exists(img_path):
+        if not os.path.exists(src):
             sys.exit("Path to base image does not exist")
 
         with sh.sudo:
-            sh.cp('--reflink=auto', "%s" % (img_path), "%s" % (new_img_path))
+            sh.cp('--reflink=auto', "%s" % (src), "%s" % (dest))
 
-        if not os.path.exists(new_img_path):
+        if not os.path.exists(dest):
             sys.exit("Should have created a new image")
 
     def __get_host_count(self, host_type=""):
@@ -86,7 +88,7 @@ class VirtualMachine():
             mount_device=sh.head(sh.awk(sh.grep(sh.kpartx('-l', img_src), '-v', 'deleted'), '{print $1}'), '-1')
             sh.mount("/dev/mapper/%s" % (mount_device.rstrip()), mount_path)
 
-    def set_hostname(self, hostname="", mount_path=""):
+    def set_vm_hostname(self, hostname="", mount_path=""):
         """
             Changes /etc/hosts and /etc/hostname
             to match the new hostname
@@ -123,6 +125,35 @@ class VirtualMachine():
             with open(hosts_path, 'w') as f:
                 f.write(hosts)
 
+    def set_vm_config(self, vm_hostname="", vm_img_path="", config_path=""):
+        """
+            Modify the vm config file
+
+            <source file="path_to_image"
+            <name> == vm_hostname
+            <uuid> == new random
+            <mac \> == delete
+        """
+        if not vm_hostname:
+            sys.exit("Could not set a NULL vm_hostname")
+
+        if not os.path.exists(vm_img_path):
+            sys.exit("Error opening %s" % (vm_img_path))
+
+        if not os.path.exists(config_path):
+            sys.exit("Could not open a non-existant config")
+
+        tree = ET.parse(config_path)
+        root = tree.getroot()
+
+        for source in root.findall("./devices/disk/source"):
+            source.attrib["file"] = vm_img_path
+
+        for name in root.findall("./name"):
+            name.text = vm_hostname
+
+        tree.write(config_path)
+
     def create(self):
         """
             Create one virtual machine
@@ -130,9 +161,13 @@ class VirtualMachine():
         self.hostname = self.host_type + str(self.__get_host_count(self.host_type))
 
         new_img = os.path.join(self.storage_path, self.hostname + ".img")
-        self.copy_vm_disk(self.img_src, new_img)
+        self.copy_file(self.img_src, new_img)
         self.mount_vm(new_img, self.mnt_path)
-        self.set_hostname(self.hostname, self.mnt_path)
+        self.set_vm_hostname(self.hostname, self.mnt_path)
+
+        new_xml = os.path.join("/etc/libvirt/qemu/", self.hostname + ".xml")
+        self.copy_file(self.xml_template_path, new_xml)
+        self.set_vm_config(self.hostname, new_img, new_xml)
 
 
 if __name__ == "__main__":
