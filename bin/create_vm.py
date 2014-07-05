@@ -45,14 +45,11 @@ class VirtualMachine():
         """
         hosts = 0
         if host_type:
-            try:
-                hosts = sh.wc(sh.awk(sh.grep(sh.virsh('list', '--all'), '"%s"' % (host_type)), '{print $2}'), '-l')
-            except:
-                hosts = 0
+            hosts = sh.wc(sh.awk(sh.grep(sh.virsh('list', '--all'), '%s' % host_type), '{print $2}'), '-l')
         else:
             sys.exit("Can't count non-existant host_type")
 
-        return hosts
+        return str(hosts).rstrip()
 
     def rm_file(self, file=""):
         """
@@ -154,6 +151,17 @@ class VirtualMachine():
 
         tree.write(config_path)
 
+    def create_vm(self, xml_config_path=""):
+        """
+            Create the actual VM with virsh with hostname
+        """
+
+        if not os.path.exists(xml_config_path):
+            sys.exit("Error opening %s" % (xml_config_path))
+
+        with sh.sudo:
+            sh.virsh("create", xml_config_path)
+
     def create(self):
         """
             Create one virtual machine
@@ -168,6 +176,7 @@ class VirtualMachine():
         new_xml = os.path.join("/etc/libvirt/qemu/", self.hostname + ".xml")
         self.copy_file(self.xml_template_path, new_xml)
         self.set_vm_config(self.hostname, new_img, new_xml)
+        self.create_vm(new_xml)
 
 
 if __name__ == "__main__":
