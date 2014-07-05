@@ -7,7 +7,6 @@ or other application using the libvirt API.
 
 <domain type='kvm'>
   <name>debian_jessie_base</name>
-  <uuid>b566d436-b735-7f61-159f-8fcea2026272</uuid>
   <memory unit='KiB'>524288</memory>
   <currentMemory unit='KiB'>524288</currentMemory>
   <vcpu placement='static'>1</vcpu>
@@ -45,9 +44,8 @@ or other application using the libvirt API.
     <controller type='ide' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
     </controller>
-    <interface type='network'>
-      <mac address='52:54:00:bf:f7:3b'/>
-      <source network='default'/>
+    <interface type='bridge'>
+      <source bridge='br0'/>
       <model type='rtl8139'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
