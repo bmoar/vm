@@ -173,6 +173,18 @@ class VirtualMachine():
         with sh.sudo:
             sh.umount(mount_path)
 
+    def delete_vm_loop(self, image_path=""):
+        """
+            Use kpartx to remove the loop device for the image at
+            image_path
+        """
+
+        if not os.path.exists(image_path):
+            sys.exit("Error deleting loop for %s" % (image_path))
+
+        with sh.sudo:
+            sh.kpartx('-d', image_path)
+
     def create(self):
         """
             Create one virtual machine
@@ -189,6 +201,8 @@ class VirtualMachine():
         self.set_vm_config(self.hostname, new_img, new_xml)
         self.create_vm(new_xml)
         self.umount_vm(self.mnt_path)
+
+        print "Created new vm: %s" % (self.hostname)
 
 
 if __name__ == "__main__":

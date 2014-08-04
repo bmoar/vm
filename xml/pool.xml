@@ -1,0 +1,6 @@
+<pool type="dir">
+    <name>nixpool</name>
+    <target>
+        <path>/mnt/virt/nix</path>
+    </target>
+</pool>
